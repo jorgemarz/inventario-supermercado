@@ -1,46 +1,27 @@
-import { sampleConsumptionLogs, sampleProducts } from "@/lib/sample-data";
-import { generateWeeklyShoppingList } from "@/lib/shopping-list";
+import Link from "next/link";
 
-export default function DashboardPage() {
-  const activeProducts = sampleProducts.filter((p) => p.active);
-  const lowStock = activeProducts.filter((p) => p.current_quantity < p.minimum_desired_quantity);
-  const weeklyList = generateWeeklyShoppingList(activeProducts);
-
+export default function HomePage() {
   return (
-    <section className="space-y-4">
-      <h1 className="section-title">Panel del hogar</h1>
-      <p className="section-subtitle">Resumen rápido para mantener la casa abastecida toda la semana.</p>
+    <section className="space-y-5">
+      <header className="card space-y-2">
+        <p className="text-sm text-amber-700">Viernes por la noche</p>
+        <h1 className="text-3xl font-bold text-slate-900">Despensa Weekly</h1>
+        <p className="text-sm text-slate-600">
+          Una forma simple y cálida de revisar lo que hace falta en casa antes de ir al súper el sábado.
+        </p>
+      </header>
 
-      <div className="grid grid-cols-2 gap-3">
-        <article className="stat-card">
-          <p className="text-xs text-slate-500">Productos activos</p>
-          <p className="text-2xl font-semibold">{activeProducts.length}</p>
-        </article>
-        <article className="stat-card">
-          <p className="text-xs text-slate-500">Stock bajo mínimo</p>
-          <p className="text-2xl font-semibold text-amber-600">{lowStock.length}</p>
-        </article>
-        <article className="stat-card">
-          <p className="text-xs text-slate-500">Consumos semanales</p>
-          <p className="text-2xl font-semibold">{sampleConsumptionLogs.length}</p>
-        </article>
-        <article className="stat-card">
-          <p className="text-xs text-slate-500">Pendientes de compra</p>
-          <p className="text-2xl font-semibold text-primary">{weeklyList.length}</p>
-        </article>
+      <div className="space-y-3">
+        <Link href="/review" className="btn-primary block text-center">
+          Revisar necesidades de esta semana
+        </Link>
+        <Link href="/shopping-list" className="btn-secondary block text-center">
+          Ver lista de compras actual
+        </Link>
+        <Link href="/history" className="btn-secondary block text-center">
+          Ver historial semanal
+        </Link>
       </div>
-
-      <article className="card">
-        <h2 className="mb-2 font-semibold">Próximas compras sugeridas</h2>
-        <ul className="space-y-2 text-sm">
-          {weeklyList.slice(0, 4).map((item) => (
-            <li key={item.product_id} className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <span className="font-medium">{item.name}</span>
-              <span className="rounded-full bg-teal-50 px-2 py-1 font-medium text-primary">+{item.suggested_purchase} {item.unit}</span>
-            </li>
-          ))}
-        </ul>
-      </article>
     </section>
   );
 }

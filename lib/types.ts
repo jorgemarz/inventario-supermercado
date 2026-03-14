@@ -1,37 +1,48 @@
+export const CATEGORY_ORDER = [
+  "Frutas y verduras",
+  "Carnes y proteínas",
+  "Lácteos",
+  "Despensa",
+  "Snacks y bebidas",
+  "Limpieza",
+  "Higiene personal",
+  "Hogar / varios"
+] as const;
+
+export type Category = (typeof CATEGORY_ORDER)[number];
+
+export type Unit = "g" | "kg" | "ml" | "L" | "pcs";
+
+export type WeeklyNeedStatus = "needed" | "almost_finished" | "not_needed";
+
 export type Product = {
   id: string;
   name: string;
-  category: string;
-  current_quantity: number;
-  unit: string;
-  minimum_desired_quantity: number;
-  weekly_average_consumption: number;
+  category: Category;
+  usual_quantity: number;
+  unit: Unit;
   active: boolean;
 };
 
-export type ConsumptionLog = {
-  id: string;
+export type WeeklyReviewItem = {
   product_id: string;
-  consumed_at: string;
-  amount_consumed: number;
+  status: WeeklyNeedStatus;
+  suggested_quantity: number;
 };
 
-export type PurchaseRecord = {
-  id: string;
-  product_id: string;
-  purchased_at: string;
-  quantity: number;
-  unit: string;
-  source: "weekly_list" | "manual";
-};
-
-export type ShoppingItem = {
+export type ShoppingListItem = {
   product_id: string;
   name: string;
-  category: string;
-  current_quantity: number;
-  target_quantity: number;
-  suggested_purchase: number;
-  unit: string;
-  reason: "below_minimum" | "consumption_projection";
+  category: Category;
+  quantity: number;
+  unit: Unit;
+  status: Exclude<WeeklyNeedStatus, "not_needed">;
+  purchased: boolean;
+};
+
+export type WeeklyListHistory = {
+  id: string;
+  week_label: string;
+  created_at: string;
+  items: ShoppingListItem[];
 };

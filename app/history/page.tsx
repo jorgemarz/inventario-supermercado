@@ -1,40 +1,38 @@
-import { sampleConsumptionLogs, sampleProducts, samplePurchaseRecords } from "@/lib/sample-data";
+import { sampleHistory } from "@/lib/sample-data";
+import { groupShoppingListByCategory } from "@/lib/shopping-list";
 
 export default function HistoryPage() {
   return (
     <section className="space-y-4">
-      <h1 className="section-title">Historial de compras y consumo</h1>
-      <p className="section-subtitle">Revisa qué consumiste y qué compraste para mejorar la planificación semanal.</p>
+      <h1 className="section-title">Historial semanal</h1>
+      <p className="section-subtitle">Guarda cada lista y las cantidades usadas para futuras sugerencias.</p>
 
-      <article className="card">
-        <h2 className="mb-2 font-semibold">Compras registradas</h2>
-        <ul className="space-y-2 text-sm">
-          {samplePurchaseRecords.map((purchase) => {
-            const product = sampleProducts.find((p) => p.id === purchase.product_id);
-            return (
-              <li key={purchase.id} className="flex justify-between border-b border-slate-100 pb-2">
-                <span>{purchase.purchased_at}</span>
-                <span>{product?.name}: +{purchase.quantity} {purchase.unit}</span>
-              </li>
-            );
-          })}
-        </ul>
-      </article>
+      {sampleHistory.map((week) => {
+        const grouped = groupShoppingListByCategory(week.items);
 
-      <article className="card">
-        <h2 className="mb-2 font-semibold">Consumo histórico</h2>
-        <ul className="space-y-2 text-sm">
-          {sampleConsumptionLogs.map((log) => {
-            const product = sampleProducts.find((p) => p.id === log.product_id);
-            return (
-              <li key={log.id} className="flex justify-between border-b border-slate-100 pb-2">
-                <span>{log.consumed_at}</span>
-                <span>{product?.name}: -{log.amount_consumed} {product?.unit}</span>
-              </li>
-            );
-          })}
-        </ul>
-      </article>
+        return (
+          <article key={week.id} className="card space-y-3">
+            <header>
+              <h2 className="font-semibold">{week.week_label}</h2>
+              <p className="text-xs text-slate-500">Generada: {new Date(week.created_at).toLocaleString("es-ES")}</p>
+            </header>
+
+            {grouped.map((group) => (
+              <div key={group.category} className="space-y-1">
+                <h3 className="text-sm font-medium text-slate-700">{group.category}</h3>
+                <ul className="space-y-1 text-sm text-slate-600">
+                  {group.items.map((item) => (
+                    <li key={item.product_id} className="flex justify-between">
+                      <span>{item.name}</span>
+                      <span>{item.quantity} {item.unit}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </article>
+        );
+      })}
     </section>
   );
 }

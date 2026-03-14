@@ -1,31 +1,36 @@
-import { Product, ShoppingItem } from "@/lib/types";
+import { CATEGORY_ORDER, Product, ShoppingListItem, WeeklyReviewItem } from "@/lib/types";
 
-export function generateWeeklyShoppingList(products: Product[]): ShoppingItem[] {
-  return products
-    .filter((p) => p.active)
-    .map((product) => {
-      const projectionTarget = product.minimum_desired_quantity + product.weekly_average_consumption;
-      const belowMinimum = product.current_quantity < product.minimum_desired_quantity;
-      const projectedShortage = product.current_quantity < projectionTarget;
+export function buildShoppingListFromReview(products: Product[], reviewItems: WeeklyReviewItem[]): ShoppingListItem[] {
+  const productsById = new Map(products.filter((product) => product.active).map((product) => [product.id, product]));
 
-      if (!belowMinimum && !projectedShortage) {
+  return reviewItems
+    .filter((item) => item.status !== "not_needed")
+    .map((item) => {
+      const product = productsById.get(item.product_id);
+      if (!product) {
         return null;
       }
-
-      const targetQuantity = Math.max(product.minimum_desired_quantity, projectionTarget);
-      const suggestedPurchase = Number((targetQuantity - product.current_quantity).toFixed(2));
 
       return {
         product_id: product.id,
         name: product.name,
         category: product.category,
-        current_quantity: product.current_quantity,
-        target_quantity: Number(targetQuantity.toFixed(2)),
-        suggested_purchase: Math.max(0, suggestedPurchase),
+        quantity: Number(item.suggested_quantity.toFixed(2)),
         unit: product.unit,
-        reason: belowMinimum ? "below_minimum" : "consumption_projection"
-      } as ShoppingItem;
+        status: item.status,
+        purchased: false
+      } satisfies ShoppingListItem;
     })
-    .filter((item): item is ShoppingItem => item !== null)
-    .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+    .filter((item): item is ShoppingListItem => item !== null)
+    .sort((a, b) => {
+      const categoryOrder = CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category);
+      return categoryOrder !== 0 ? categoryOrder : a.name.localeCompare(b.name);
+    });
+}
+
+export function groupShoppingListByCategory(items: ShoppingListItem[]) {
+  return CATEGORY_ORDER.map((category) => ({
+    category,
+    items: items.filter((item) => item.category === category)
+  })).filter((group) => group.items.length > 0);
 }
