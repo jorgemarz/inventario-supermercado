@@ -1,52 +1,47 @@
-# Inventario Supermercado (Next.js + Tailwind + Supabase)
+# Despensa Weekly (Next.js + Tailwind + Supabase)
 
-Aplicación personal para registrar consumo diario y generar cada sábado una lista de compras basada en stock real y consumo semanal.
+App simple para planificar compras del súper cada semana.
 
-## Archivos clave
+## Enfoque
 
-- `supabase/schema.sql`: esquema completo de base de datos.
-- `supabase/seed.sql`: datos de ejemplo y generación de lista semanal.
+- Flujo principal de viernes por la noche.
+- Lista maestra de productos del hogar.
+- Revisión semanal por producto (`needed`, `almost_finished`, `not_needed`).
+- Generación de lista de compras para sábado, agrupada por categoría.
+- Historial semanal de cantidades para futuras funciones de predicción.
 
-## Esquema de base de datos
+## Pantallas
 
-`schema.sql` crea:
+- `Inicio`: acceso rápido al flujo semanal.
+- `Productos`: lista maestra (nombre, categoría, cantidad usual, unidad, activo).
+- `Revisión`: marcar estado semanal y ajustar cantidad sugerida.
+- `Lista`: checklist de compra agrupado por categoría.
+- `Historial`: listas semanales guardadas con cantidades.
 
-- `products`: catálogo de productos del hogar.
-- `daily_consumption_logs`: registro diario de consumo.
-- `weekly_shopping_lists`: cabecera de listas semanales (sábado).
-- `weekly_shopping_list_items`: detalle de productos sugeridos para comprar.
-- `purchases`: historial de compras reales.
-- `latest_weekly_shopping_list` (view): vista de la última lista generada.
+## Base de datos
 
-Incluye además:
+### Archivos clave
 
-- Validaciones (`CHECK`) para cantidades y valores válidos.
-- Índices para consultas por fecha/producto.
-- Triggers para:
-  - descontar stock al insertar consumo diario;
-  - aumentar stock al insertar compras;
-  - actualizar `updated_at` en productos.
-- Función `generate_weekly_shopping_list(p_saturday date)` para calcular sugerencias de compra automáticamente.
+- `supabase/schema.sql`: esquema de Despensa Weekly.
+- `supabase/seed.sql`: datos de ejemplo listos para demo.
 
-## Seed data
+### Modelo principal
 
-`seed.sql`:
-
-- limpia tablas en orden seguro;
-- inserta 10 productos de distintas categorías (incluyendo uno inactivo);
-- inserta consumos diarios de ejemplo;
-- inserta compras históricas de ejemplo;
-- ejecuta `generate_weekly_shopping_list(...)` para dejar una lista de sábado lista para consultar.
+- `products`: catálogo maestro de productos.
+- `weekly_reviews`: cabecera de cada revisión semanal.
+- `weekly_review_items`: estado marcado por producto y cantidad final para la semana.
+- `purchased_quantity_history`: histórico de cantidades compradas para análisis/predicción futura.
+- `latest_weekly_shopping_list` (view): lista actual filtrada por estados `needed` y `almost_finished`.
 
 ## Ejecutar en Supabase
 
 1. Abrir SQL Editor en Supabase.
 2. Ejecutar `supabase/schema.sql`.
 3. Ejecutar `supabase/seed.sql`.
-4. Consultar resultados:
+4. Consultar:
 
 ```sql
 select * from public.products order by category, name;
-select * from public.daily_consumption_logs order by consumed_on desc;
+select * from public.weekly_review_items order by created_at desc;
 select * from public.latest_weekly_shopping_list;
 ```

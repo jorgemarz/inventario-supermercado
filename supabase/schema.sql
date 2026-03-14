@@ -1,28 +1,36 @@
--- Grocery inventory schema for weekly supermarket planning
+-- Despensa Weekly schema
 -- Postgres/Supabase SQL
 
 create extension if not exists "pgcrypto";
 
 -- ----
--- Core catalog
+-- Master grocery catalog
 -- ----
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   category text not null,
+  usual_quantity numeric(12,3) not null,
   unit text not null,
-  current_quantity numeric(12,3) not null default 0,
-  minimum_desired_quantity numeric(12,3) not null default 0,
-  weekly_average_consumption numeric(12,3) not null default 0,
   active boolean not null default true,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   constraint products_name_not_blank check (length(trim(name)) > 0),
   constraint products_category_not_blank check (length(trim(category)) > 0),
-  constraint products_unit_not_blank check (length(trim(unit)) > 0),
-  constraint products_current_quantity_non_negative check (current_quantity >= 0),
-  constraint products_minimum_non_negative check (minimum_desired_quantity >= 0),
-  constraint products_weekly_average_non_negative check (weekly_average_consumption >= 0)
+  constraint products_usual_quantity_non_negative check (usual_quantity >= 0),
+  constraint products_unit_valid check (unit in ('g', 'kg', 'ml', 'L', 'pcs')),
+  constraint products_category_valid check (
+    category in (
+      'Frutas y verduras',
+      'Carnes y proteínas',
+      'Lácteos',
+      'Despensa',
+      'Snacks y bebidas',
+      'Limpieza',
+      'Higiene personal',
+      'Hogar / varios'
+    )
+  )
 );
 
 create unique index if not exists products_name_unique_active_idx
@@ -30,89 +38,60 @@ create unique index if not exists products_name_unique_active_idx
   where active = true;
 
 -- ----
--- Daily stock consumption events
+-- Weekly review session (Friday night)
 -- ----
-create table if not exists public.daily_consumption_logs (
+create table if not exists public.weekly_reviews (
   id uuid primary key default gen_random_uuid(),
-  consumed_on date not null,
-  product_id uuid not null references public.products(id) on delete cascade,
-  amount_consumed numeric(12,3) not null,
+  week_start_date date not null,
+  reviewed_at timestamptz not null default timezone('utc', now()),
   notes text,
-  created_at timestamptz not null default timezone('utc', now()),
-  constraint daily_consumption_amount_positive check (amount_consumed > 0)
+  constraint weekly_reviews_unique_week unique (week_start_date)
 );
 
-create index if not exists daily_consumption_logs_product_date_idx
-  on public.daily_consumption_logs (product_id, consumed_on desc);
-
-create index if not exists daily_consumption_logs_date_idx
-  on public.daily_consumption_logs (consumed_on desc);
-
--- ----
--- Weekly shopping list snapshots (generated every Saturday)
--- ----
-create table if not exists public.weekly_shopping_lists (
+create table if not exists public.weekly_review_items (
   id uuid primary key default gen_random_uuid(),
-  generated_for_saturday date not null,
-  generated_at timestamptz not null default timezone('utc', now()),
-  generation_mode text not null default 'manual',
-  notes text,
-  constraint weekly_shopping_lists_mode_valid check (generation_mode in ('manual', 'scheduled')),
-  constraint weekly_shopping_lists_is_saturday
-    check (extract(isodow from generated_for_saturday) = 6),
-  constraint weekly_shopping_lists_unique_saturday unique (generated_for_saturday)
-);
-
-create table if not exists public.weekly_shopping_list_items (
-  id uuid primary key default gen_random_uuid(),
-  shopping_list_id uuid not null references public.weekly_shopping_lists(id) on delete cascade,
-  product_id uuid not null references public.products(id) on delete cascade,
-  category text not null,
-  current_quantity numeric(12,3) not null,
-  minimum_desired_quantity numeric(12,3) not null,
-  weekly_average_consumption numeric(12,3) not null,
-  target_quantity numeric(12,3) not null,
-  suggested_purchase numeric(12,3) not null,
-  reason text not null,
-  created_at timestamptz not null default timezone('utc', now()),
-  constraint weekly_shopping_item_reason_valid
-    check (reason in ('below_minimum', 'consumption_projection')),
-  constraint weekly_shopping_item_current_non_negative check (current_quantity >= 0),
-  constraint weekly_shopping_item_target_non_negative check (target_quantity >= 0),
-  constraint weekly_shopping_item_suggested_non_negative check (suggested_purchase >= 0),
-  constraint weekly_shopping_item_unique_product unique (shopping_list_id, product_id)
-);
-
-create index if not exists weekly_shopping_items_list_idx
-  on public.weekly_shopping_list_items (shopping_list_id);
-
-create index if not exists weekly_shopping_items_category_idx
-  on public.weekly_shopping_list_items (category, suggested_purchase desc);
-
--- ----
--- Optional purchase history (what was actually bought)
--- ----
-create table if not exists public.purchases (
-  id uuid primary key default gen_random_uuid(),
-  purchased_on date not null,
+  review_id uuid not null references public.weekly_reviews(id) on delete cascade,
   product_id uuid not null references public.products(id) on delete restrict,
-  quantity numeric(12,3) not null,
-  unit_price numeric(12,2),
-  store text,
-  notes text,
+  status text not null,
+  suggested_quantity numeric(12,3) not null,
+  final_quantity numeric(12,3) not null,
+  purchased boolean not null default false,
+  purchased_quantity numeric(12,3),
   created_at timestamptz not null default timezone('utc', now()),
-  constraint purchases_quantity_positive check (quantity > 0),
-  constraint purchases_unit_price_non_negative check (unit_price is null or unit_price >= 0)
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint weekly_review_items_status_valid check (status in ('needed', 'almost_finished', 'not_needed')),
+  constraint weekly_review_items_suggested_non_negative check (suggested_quantity >= 0),
+  constraint weekly_review_items_final_non_negative check (final_quantity >= 0),
+  constraint weekly_review_items_purchased_quantity_non_negative
+    check (purchased_quantity is null or purchased_quantity >= 0),
+  constraint weekly_review_items_unique_product_per_review unique (review_id, product_id)
 );
 
-create index if not exists purchases_date_idx
-  on public.purchases (purchased_on desc);
-
-create index if not exists purchases_product_date_idx
-  on public.purchases (product_id, purchased_on desc);
+create index if not exists weekly_review_items_review_idx
+  on public.weekly_review_items (review_id, status, product_id);
 
 -- ----
--- Triggers and helper procedures
+-- Purchased quantity history (ready for future prediction models)
+-- ----
+create table if not exists public.purchased_quantity_history (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references public.products(id) on delete restrict,
+  review_item_id uuid references public.weekly_review_items(id) on delete set null,
+  purchased_on date not null,
+  quantity numeric(12,3) not null,
+  unit text not null,
+  source text not null default 'weekly_list',
+  created_at timestamptz not null default timezone('utc', now()),
+  constraint purchased_history_quantity_positive check (quantity > 0),
+  constraint purchased_history_unit_valid check (unit in ('g', 'kg', 'ml', 'L', 'pcs')),
+  constraint purchased_history_source_valid check (source in ('weekly_list', 'manual'))
+);
+
+create index if not exists purchased_history_product_date_idx
+  on public.purchased_quantity_history (product_id, purchased_on desc);
+
+-- ----
+-- Helpers + read models
 -- ----
 create or replace function public.set_updated_at()
 returns trigger
@@ -129,179 +108,39 @@ before update on public.products
 for each row
 execute function public.set_updated_at();
 
--- Keep product stock synchronized with consumption logs on insert/update/delete.
-create or replace function public.apply_consumption_to_product_stock()
-returns trigger
-language plpgsql
-as $$
-begin
-  if tg_op = 'INSERT' then
-    update public.products
-      set current_quantity = greatest(current_quantity - new.amount_consumed, 0)
-      where id = new.product_id;
-
-    return new;
-  elsif tg_op = 'DELETE' then
-    update public.products
-      set current_quantity = current_quantity + old.amount_consumed
-      where id = old.product_id;
-
-    return old;
-  elsif tg_op = 'UPDATE' then
-    if new.product_id = old.product_id then
-      update public.products
-        set current_quantity = greatest(current_quantity + old.amount_consumed - new.amount_consumed, 0)
-        where id = new.product_id;
-    else
-      update public.products
-        set current_quantity = current_quantity + old.amount_consumed
-        where id = old.product_id;
-
-      update public.products
-        set current_quantity = greatest(current_quantity - new.amount_consumed, 0)
-        where id = new.product_id;
-    end if;
-
-    return new;
-  end if;
-
-  return null;
-end;
-$$;
-
-create or replace trigger trg_apply_consumption_to_stock
-after insert or update or delete on public.daily_consumption_logs
+create or replace trigger trg_weekly_review_items_updated_at
+before update on public.weekly_review_items
 for each row
-execute function public.apply_consumption_to_product_stock();
+execute function public.set_updated_at();
 
--- Keep product stock synchronized with purchases on insert/update/delete.
-create or replace function public.apply_purchase_to_product_stock()
-returns trigger
-language plpgsql
-as $$
-begin
-  if tg_op = 'INSERT' then
-    update public.products
-      set current_quantity = current_quantity + new.quantity
-      where id = new.product_id;
-
-    return new;
-  elsif tg_op = 'DELETE' then
-    update public.products
-      set current_quantity = greatest(current_quantity - old.quantity, 0)
-      where id = old.product_id;
-
-    return old;
-  elsif tg_op = 'UPDATE' then
-    if new.product_id = old.product_id then
-      update public.products
-        set current_quantity = greatest(current_quantity - old.quantity + new.quantity, 0)
-        where id = new.product_id;
-    else
-      update public.products
-        set current_quantity = greatest(current_quantity - old.quantity, 0)
-        where id = old.product_id;
-
-      update public.products
-        set current_quantity = current_quantity + new.quantity
-        where id = new.product_id;
-    end if;
-
-    return new;
-  end if;
-
-  return null;
-end;
-$$;
-
-create or replace trigger trg_apply_purchase_to_stock
-after insert or update or delete on public.purchases
-for each row
-execute function public.apply_purchase_to_product_stock();
-
--- Generates shopping list for the requested Saturday date.
--- Rules:
--- 1) Include product if current_quantity < minimum_desired_quantity
--- 2) Also include product if current_quantity < (minimum + weekly_average_consumption)
--- 3) Suggest purchase up to target_quantity = max(minimum, minimum + weekly_average_consumption)
-create or replace function public.generate_weekly_shopping_list(p_saturday date default null)
-returns uuid
-language plpgsql
-as $$
-declare
-  v_saturday date;
-  v_list_id uuid;
-begin
-  v_saturday := coalesce(
-    p_saturday,
-    (date_trunc('week', timezone('utc', now()))::date + 5)
-  );
-
-  if extract(isodow from v_saturday) <> 6 then
-    raise exception 'generate_weekly_shopping_list requires a Saturday date. Got: %', v_saturday;
-  end if;
-
-  insert into public.weekly_shopping_lists (generated_for_saturday, generation_mode)
-  values (v_saturday, 'scheduled')
-  on conflict (generated_for_saturday)
-  do update set generated_at = timezone('utc', now())
-  returning id into v_list_id;
-
-  delete from public.weekly_shopping_list_items where shopping_list_id = v_list_id;
-
-  insert into public.weekly_shopping_list_items (
-    shopping_list_id,
-    product_id,
-    category,
-    current_quantity,
-    minimum_desired_quantity,
-    weekly_average_consumption,
-    target_quantity,
-    suggested_purchase,
-    reason
-  )
-  select
-    v_list_id,
-    p.id,
-    p.category,
-    p.current_quantity,
-    p.minimum_desired_quantity,
-    p.weekly_average_consumption,
-    greatest(p.minimum_desired_quantity, p.minimum_desired_quantity + p.weekly_average_consumption) as target_quantity,
-    greatest(greatest(p.minimum_desired_quantity, p.minimum_desired_quantity + p.weekly_average_consumption) - p.current_quantity, 0) as suggested_purchase,
-    case
-      when p.current_quantity < p.minimum_desired_quantity then 'below_minimum'
-      else 'consumption_projection'
-    end as reason
-  from public.products p
-  where p.active = true
-    and (
-      p.current_quantity < p.minimum_desired_quantity
-      or p.current_quantity < (p.minimum_desired_quantity + p.weekly_average_consumption)
-    );
-
-  return v_list_id;
-end;
-$$;
-
--- Useful read model for the latest generated list.
 create or replace view public.latest_weekly_shopping_list as
 select
-  l.generated_for_saturday,
-  l.generated_at,
-  i.product_id,
+  wr.week_start_date,
+  wr.reviewed_at,
+  p.id as product_id,
   p.name,
-  i.category,
-  i.current_quantity,
-  i.minimum_desired_quantity,
-  i.weekly_average_consumption,
-  i.target_quantity,
-  i.suggested_purchase,
-  i.reason
-from public.weekly_shopping_lists l
-join public.weekly_shopping_list_items i on i.shopping_list_id = l.id
-join public.products p on p.id = i.product_id
-where l.generated_for_saturday = (
-  select max(generated_for_saturday) from public.weekly_shopping_lists
+  p.category,
+  wri.status,
+  wri.final_quantity as quantity,
+  p.unit,
+  wri.purchased,
+  wri.purchased_quantity
+from public.weekly_reviews wr
+join public.weekly_review_items wri on wri.review_id = wr.id
+join public.products p on p.id = wri.product_id
+where wr.week_start_date = (
+  select max(week_start_date) from public.weekly_reviews
 )
-order by i.category, p.name;
+and wri.status in ('needed', 'almost_finished')
+order by
+  case p.category
+    when 'Frutas y verduras' then 1
+    when 'Carnes y proteínas' then 2
+    when 'Lácteos' then 3
+    when 'Despensa' then 4
+    when 'Snacks y bebidas' then 5
+    when 'Limpieza' then 6
+    when 'Higiene personal' then 7
+    else 8
+  end,
+  p.name;

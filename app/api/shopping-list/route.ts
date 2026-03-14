@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
-import { sampleProducts } from "@/lib/sample-data";
-import { generateWeeklyShoppingList } from "@/lib/shopping-list";
+import { sampleCurrentWeekReview, sampleProducts } from "@/lib/sample-data";
+import { buildShoppingListFromReview, groupShoppingListByCategory } from "@/lib/shopping-list";
 
 export async function GET() {
-  const generatedAt = new Date().toISOString();
-  const list = generateWeeklyShoppingList(sampleProducts);
+  const items = buildShoppingListFromReview(sampleProducts, sampleCurrentWeekReview);
 
   return NextResponse.json({
-    generatedAt,
-    itemCount: list.length,
-    items: list
+    generatedAt: new Date().toISOString(),
+    itemCount: items.length,
+    grouped: groupShoppingListByCategory(items)
   });
 }

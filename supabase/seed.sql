@@ -1,56 +1,60 @@
--- Seed data for local development/demo
+-- Seed data for Despensa Weekly demo
 
-truncate table public.weekly_shopping_list_items restart identity cascade;
-truncate table public.weekly_shopping_lists restart identity cascade;
-truncate table public.daily_consumption_logs restart identity cascade;
-truncate table public.purchases restart identity cascade;
+truncate table public.purchased_quantity_history restart identity cascade;
+truncate table public.weekly_review_items restart identity cascade;
+truncate table public.weekly_reviews restart identity cascade;
 truncate table public.products restart identity cascade;
 
-insert into public.products (
-  id,
-  name,
-  category,
-  unit,
-  current_quantity,
-  minimum_desired_quantity,
-  weekly_average_consumption,
-  active
+insert into public.products (id, name, category, usual_quantity, unit, active)
+values
+  ('10000000-0000-0000-0000-000000000001', 'Plátanos', 'Frutas y verduras', 1.500, 'kg', true),
+  ('10000000-0000-0000-0000-000000000002', 'Pollo', 'Carnes y proteínas', 1.000, 'kg', true),
+  ('10000000-0000-0000-0000-000000000003', 'Leche', 'Lácteos', 3.000, 'L', true),
+  ('10000000-0000-0000-0000-000000000004', 'Arroz', 'Despensa', 2.000, 'kg', true),
+  ('10000000-0000-0000-0000-000000000005', 'Galletas', 'Snacks y bebidas', 2.000, 'pcs', true),
+  ('10000000-0000-0000-0000-000000000006', 'Detergente', 'Limpieza', 1.000, 'L', true),
+  ('10000000-0000-0000-0000-000000000007', 'Shampoo', 'Higiene personal', 1.000, 'pcs', true),
+  ('10000000-0000-0000-0000-000000000008', 'Bolsas de basura', 'Hogar / varios', 1.000, 'pcs', true);
+
+insert into public.weekly_reviews (id, week_start_date, reviewed_at, notes)
+values
+  ('20000000-0000-0000-0000-000000000001', current_date - 7, timezone('utc', now()) - interval '7 days', 'Semana anterior'),
+  ('20000000-0000-0000-0000-000000000002', current_date, timezone('utc', now()), 'Revisión de viernes noche');
+
+insert into public.weekly_review_items (
+  review_id,
+  product_id,
+  status,
+  suggested_quantity,
+  final_quantity,
+  purchased,
+  purchased_quantity
 )
 values
-  ('10000000-0000-0000-0000-000000000001', 'Leche', 'Lácteos', 'L', 1.200, 3.000, 2.500, true),
-  ('10000000-0000-0000-0000-000000000002', 'Huevos', 'Proteínas', 'unidad', 6.000, 12.000, 10.000, true),
-  ('10000000-0000-0000-0000-000000000003', 'Arroz', 'Despensa', 'kg', 1.800, 2.000, 1.000, true),
-  ('10000000-0000-0000-0000-000000000004', 'Pasta', 'Despensa', 'paquete', 0.000, 2.000, 1.000, true),
-  ('10000000-0000-0000-0000-000000000005', 'Detergente', 'Limpieza', 'L', 0.350, 1.000, 0.300, true),
-  ('10000000-0000-0000-0000-000000000006', 'Papel higiénico', 'Hogar', 'rollo', 3.000, 12.000, 6.000, true),
-  ('10000000-0000-0000-0000-000000000007', 'Manzanas', 'Frutas', 'kg', 0.500, 1.500, 1.000, true),
-  ('10000000-0000-0000-0000-000000000008', 'Café', 'Despensa', 'g', 150.000, 250.000, 120.000, true),
-  ('10000000-0000-0000-0000-000000000009', 'Yogur', 'Lácteos', 'unidad', 8.000, 6.000, 4.000, true),
-  ('10000000-0000-0000-0000-000000000010', 'Salsa picante (inactivo)', 'Despensa', 'botella', 1.000, 1.000, 0.000, false);
+  ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'needed', 1.200, 1.200, true, 1.200),
+  ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', 'needed', 2.500, 3.000, true, 3.000),
+  ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000006', 'almost_finished', 1.000, 1.000, true, 1.000),
+  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'needed', 1.500, 1.500, false, null),
+  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'almost_finished', 1.000, 1.000, false, null),
+  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000003', 'needed', 3.000, 3.000, false, null),
+  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000004', 'not_needed', 0.000, 0.000, false, null),
+  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000005', 'almost_finished', 1.000, 1.000, false, null),
+  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000006', 'not_needed', 0.000, 0.000, false, null),
+  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000007', 'needed', 1.000, 1.000, false, null),
+  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000008', 'not_needed', 0.000, 0.000, false, null);
 
--- Simulate daily consumption entries for the current week.
-insert into public.daily_consumption_logs (consumed_on, product_id, amount_consumed, notes)
-values
-  (current_date - 6, '10000000-0000-0000-0000-000000000001', 0.400, 'Cereal desayuno'),
-  (current_date - 6, '10000000-0000-0000-0000-000000000002', 2.000, 'Tortilla'),
-  (current_date - 5, '10000000-0000-0000-0000-000000000004', 1.000, 'Pasta almuerzo'),
-  (current_date - 5, '10000000-0000-0000-0000-000000000007', 0.250, 'Colación'),
-  (current_date - 4, '10000000-0000-0000-0000-000000000001', 0.300, 'Café con leche'),
-  (current_date - 4, '10000000-0000-0000-0000-000000000005', 0.100, 'Lavado ropa'),
-  (current_date - 3, '10000000-0000-0000-0000-000000000006', 1.000, 'Uso diario'),
-  (current_date - 2, '10000000-0000-0000-0000-000000000008', 20.000, 'Cafetera'),
-  (current_date - 1, '10000000-0000-0000-0000-000000000001', 0.500, 'Batido'),
-  (current_date - 1, '10000000-0000-0000-0000-000000000002', 3.000, 'Cena');
+insert into public.purchased_quantity_history (product_id, review_item_id, purchased_on, quantity, unit, source)
+select
+  wri.product_id,
+  wri.id,
+  (current_date - 6),
+  wri.purchased_quantity,
+  p.unit,
+  'weekly_list'
+from public.weekly_review_items wri
+join public.products p on p.id = wri.product_id
+where wri.review_id = '20000000-0000-0000-0000-000000000001'
+  and wri.purchased = true
+  and wri.purchased_quantity is not null;
 
--- Simulate purchases that happened recently.
-insert into public.purchases (purchased_on, product_id, quantity, unit_price, store, notes)
-values
-  (current_date - 10, '10000000-0000-0000-0000-000000000006', 12.000, 0.55, 'Super A', 'Pack mensual'),
-  (current_date - 10, '10000000-0000-0000-0000-000000000002', 12.000, 0.22, 'Super A', null),
-  (current_date - 9, '10000000-0000-0000-0000-000000000003', 1.000, 1.95, 'Super B', null),
-  (current_date - 8, '10000000-0000-0000-0000-000000000005', 1.000, 3.40, 'Super B', null);
-
--- Generate Saturday list for this week.
-select public.generate_weekly_shopping_list(
-  date_trunc('week', current_date)::date + 5
-);
+select * from public.latest_weekly_shopping_list;
