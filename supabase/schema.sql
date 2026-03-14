@@ -129,41 +129,93 @@ before update on public.products
 for each row
 execute function public.set_updated_at();
 
--- When a consumption log is inserted, discount the product stock.
+-- Keep product stock synchronized with consumption logs on insert/update/delete.
 create or replace function public.apply_consumption_to_product_stock()
 returns trigger
 language plpgsql
 as $$
 begin
-  update public.products
-    set current_quantity = greatest(current_quantity - new.amount_consumed, 0)
-    where id = new.product_id;
+  if tg_op = 'INSERT' then
+    update public.products
+      set current_quantity = greatest(current_quantity - new.amount_consumed, 0)
+      where id = new.product_id;
 
-  return new;
+    return new;
+  elsif tg_op = 'DELETE' then
+    update public.products
+      set current_quantity = current_quantity + old.amount_consumed
+      where id = old.product_id;
+
+    return old;
+  elsif tg_op = 'UPDATE' then
+    if new.product_id = old.product_id then
+      update public.products
+        set current_quantity = greatest(current_quantity + old.amount_consumed - new.amount_consumed, 0)
+        where id = new.product_id;
+    else
+      update public.products
+        set current_quantity = current_quantity + old.amount_consumed
+        where id = old.product_id;
+
+      update public.products
+        set current_quantity = greatest(current_quantity - new.amount_consumed, 0)
+        where id = new.product_id;
+    end if;
+
+    return new;
+  end if;
+
+  return null;
 end;
 $$;
 
 create or replace trigger trg_apply_consumption_to_stock
-after insert on public.daily_consumption_logs
+after insert or update or delete on public.daily_consumption_logs
 for each row
 execute function public.apply_consumption_to_product_stock();
 
--- When a purchase row is inserted, increase stock.
+-- Keep product stock synchronized with purchases on insert/update/delete.
 create or replace function public.apply_purchase_to_product_stock()
 returns trigger
 language plpgsql
 as $$
 begin
-  update public.products
-    set current_quantity = current_quantity + new.quantity
-    where id = new.product_id;
+  if tg_op = 'INSERT' then
+    update public.products
+      set current_quantity = current_quantity + new.quantity
+      where id = new.product_id;
 
-  return new;
+    return new;
+  elsif tg_op = 'DELETE' then
+    update public.products
+      set current_quantity = greatest(current_quantity - old.quantity, 0)
+      where id = old.product_id;
+
+    return old;
+  elsif tg_op = 'UPDATE' then
+    if new.product_id = old.product_id then
+      update public.products
+        set current_quantity = greatest(current_quantity - old.quantity + new.quantity, 0)
+        where id = new.product_id;
+    else
+      update public.products
+        set current_quantity = greatest(current_quantity - old.quantity, 0)
+        where id = old.product_id;
+
+      update public.products
+        set current_quantity = current_quantity + new.quantity
+        where id = new.product_id;
+    end if;
+
+    return new;
+  end if;
+
+  return null;
 end;
 $$;
 
 create or replace trigger trg_apply_purchase_to_stock
-after insert on public.purchases
+after insert or update or delete on public.purchases
 for each row
 execute function public.apply_purchase_to_product_stock();
 
