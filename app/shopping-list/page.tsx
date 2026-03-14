@@ -1,14 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { sampleCurrentWeekReview, sampleProducts } from "@/lib/sample-data";
+import { sampleProducts } from "@/lib/sample-data";
 import { buildShoppingListFromReview, groupShoppingListByCategory } from "@/lib/shopping-list";
+import { loadCurrentWeekReview } from "@/lib/current-week-review";
 
 export default function ShoppingListPage() {
   const [purchasedByItem, setPurchasedByItem] = useState<Record<string, boolean>>({});
 
   const list = useMemo(
-    () => buildShoppingListFromReview(sampleProducts, sampleCurrentWeekReview),
+    () => buildShoppingListFromReview(sampleProducts, loadCurrentWeekReview()),
     []
   );
 

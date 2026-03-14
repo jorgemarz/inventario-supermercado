@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { sampleCurrentWeekReview, sampleProducts } from "@/lib/sample-data";
+import { useEffect, useMemo, useState } from "react";
+import { sampleProducts } from "@/lib/sample-data";
 import { WeeklyNeedStatus, WeeklyReviewItem } from "@/lib/types";
 import { buildShoppingListFromReview } from "@/lib/shopping-list";
+import { loadCurrentWeekReview, saveCurrentWeekReview } from "@/lib/current-week-review";
 
 const statusOptions: { value: WeeklyNeedStatus; label: string }[] = [
   { value: "needed", label: "Needed" },
@@ -12,12 +13,16 @@ const statusOptions: { value: WeeklyNeedStatus; label: string }[] = [
 ];
 
 export default function ReviewPage() {
-  const [review, setReview] = useState<WeeklyReviewItem[]>(sampleCurrentWeekReview);
+  const [review, setReview] = useState<WeeklyReviewItem[]>(() => loadCurrentWeekReview());
 
   const shoppingCount = useMemo(
     () => buildShoppingListFromReview(sampleProducts, review).length,
     [review]
   );
+
+  useEffect(() => {
+    saveCurrentWeekReview(review);
+  }, [review]);
 
   function update(productId: string, patch: Partial<WeeklyReviewItem>) {
     setReview((current) =>
