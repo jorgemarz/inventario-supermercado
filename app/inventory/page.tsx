@@ -6,13 +6,24 @@ import { CATEGORY_ORDER, Product, Unit } from "@/lib/types";
 
 const units: Unit[] = ["g", "kg", "ml", "L", "pcs"];
 
-const blankForm = {
+type ProductForm = {
+  name: string
+  category: Product["category"]
+  usual_quantity: string
+  unit: Unit
+  active: boolean
+}
+
+const blankForm: ProductForm = {
   name: "",
-  category: CATEGORY_ORDER[0],
-  usual_quantity: "1",
-  unit: "pcs" as Unit,
-  active: true
-};
+  category: "Frutas y verduras",
+  usual_quantity: "",
+  unit: "g",
+  active: true,
+}
+
+const [form, setForm] = useState<ProductForm>(blankForm);
+
 
 export default function MasterProductsPage() {
   const [products, setProducts] = useState<Product[]>(sampleProducts);
