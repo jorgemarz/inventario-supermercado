@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { sampleProducts } from "@/lib/sample-data";
-import { Product, Unit } from "@/lib/types";
+import { CATEGORY_ORDER, Product, Unit } from "@/lib/types";
 
 const units: Unit[] = ["g", "kg", "ml", "L", "pcs"];
 
