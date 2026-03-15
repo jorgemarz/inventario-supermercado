@@ -58,3 +58,34 @@ export function getCurrentWeekLabel() {
 
   return `${format(start)} - ${format(end)}`;
 }
+export async function getOrCreateCurrentWeekReviewId() {
+  const weekLabel = getCurrentWeekLabel();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("weekly_reviews")
+    .select("id")
+    .eq("week_label", weekLabel)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error("Error fetching current weekly review:", fetchError);
+    throw fetchError;
+  }
+
+  if (existing?.id) {
+    return existing.id;
+  }
+
+  const { data: created, error: insertError } = await supabase
+    .from("weekly_reviews")
+    .insert([{ week_label: weekLabel }])
+    .select("id")
+    .single();
+
+  if (insertError) {
+    console.error("Error creating current weekly review:", insertError);
+    throw insertError;
+  }
+
+  return created.id;
+}
