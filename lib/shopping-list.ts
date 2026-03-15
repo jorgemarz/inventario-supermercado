@@ -1,48 +1,36 @@
-import { Product, ShoppingListItem, WeeklyReviewItem } from "@/lib/types";
+import { CATEGORY_ORDER, Product, ShoppingListItem, WeeklyReviewItem } from "@/lib/types";
 
-export function buildShoppingListFromReview(
-  products: Product[],
-  reviewItems: WeeklyReviewItem[]
-): ShoppingListItem[] {
-  const productsById = new Map(
-    products
-      .filter((product) => product.active)
-      .map((product) => [product.id, product])
-  );
+export function buildShoppingListFromReview(products: Product[], reviewItems: WeeklyReviewItem[]): ShoppingListItem[] {
+  const productsById = new Map(products.filter((product) => product.active).map((product) => [product.id, product]));
 
   return reviewItems
-    .filter((item) => item.status !== "not_needed")
-    .map((item) => {
+    .filter((item): item is WeeklyReviewItem & { status: Exclude<WeeklyReviewItem["status"], "not_needed"> } => item.status !== "not_needed")
+    .map((item): ShoppingListItem | null => {
       const product = productsById.get(item.product_id);
-
       if (!product) {
         return null;
       }
 
       return {
-        product_id: item.product_id,
+        product_id: product.id,
         name: product.name,
         category: product.category,
-        quantity: item.suggested_quantity ?? product.usual_quantity,
+        quantity: Number(item.suggested_quantity.toFixed(2)),
         unit: product.unit,
         status: item.status,
-        purchased: false,
+        purchased: false
       };
     })
-    .filter((item): item is ShoppingListItem => item !== null);
+    .filter((item): item is ShoppingListItem => item !== null)
+    .sort((a, b) => {
+      const categoryOrder = CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category);
+      return categoryOrder !== 0 ? categoryOrder : a.name.localeCompare(b.name);
+    });
 }
 
 export function groupShoppingListByCategory(items: ShoppingListItem[]) {
-  const groups = new Map<string, ShoppingListItem[]>();
-
-  for (const item of items) {
-    const current = groups.get(item.category) ?? [];
-    current.push(item);
-    groups.set(item.category, current);
-  }
-
-  return Array.from(groups.entries()).map(([category, items]) => ({
+  return CATEGORY_ORDER.map((category) => ({
     category,
-    items,
-  }));
+    items: items.filter((item) => item.category === category)
+  })).filter((group) => group.items.length > 0);
 }
