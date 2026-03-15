@@ -40,3 +40,21 @@ export async function getWeeklyReviewHistory() {
 
   return data
 }
+export function getCurrentWeekLabel() {
+  const now = new Date();
+  const start = new Date(now);
+  const day = start.getDay();
+  const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+  start.setDate(diff);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  const format = (date: Date) =>
+    date.toLocaleDateString("es-MX", {
+      day: "2-digit",
+      month: "short",
+    });
+
+  return `${format(start)} - ${format(end)}`;
+}
