@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { sampleProducts } from "@/lib/sample-data";
-import { CATEGORY_ORDER, Product, Unit } from "@/lib/types";
+import { Product, Unit } from "@/lib/types";
 
 const units: Unit[] = ["g", "kg", "ml", "L", "pcs"];
 
@@ -16,9 +16,9 @@ type ProductForm = {
 
 const blankForm: ProductForm = {
   name: "",
-  category: CATEGORY_ORDER[0],
-  usual_quantity: "1",
-  unit: "pcs" as Unit,
+  category: "Frutas y verduras",
+  usual_quantity: "",
+  unit: "g",
   active: true
 };
 
