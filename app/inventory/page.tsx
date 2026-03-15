@@ -2,21 +2,29 @@
 
 import { FormEvent, useState } from "react";
 import { sampleProducts } from "@/lib/sample-data";
-import { CATEGORY_ORDER, Product, Unit } from "@/lib/types";
+import { Product, Unit } from "@/lib/types";
 
 const units: Unit[] = ["g", "kg", "ml", "L", "pcs"];
 
-const blankForm = {
+type ProductForm = {
+  name: string;
+  category: Product["category"];
+  usual_quantity: string;
+  unit: Unit;
+  active: boolean;
+};
+
+const blankForm: ProductForm = {
   name: "",
-  category: CATEGORY_ORDER[0],
-  usual_quantity: "1",
-  unit: "pcs" as Unit,
+  category: "Frutas y verduras",
+  usual_quantity: "",
+  unit: "g",
   active: true
 };
 
 export default function MasterProductsPage() {
   const [products, setProducts] = useState<Product[]>(sampleProducts);
-  const [form, setForm] = useState(blankForm);
+  const [form, setForm] = useState<ProductForm>(blankForm);
 
   function addProduct(event: FormEvent) {
     event.preventDefault();

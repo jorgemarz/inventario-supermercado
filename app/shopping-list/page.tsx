@@ -1,17 +1,39 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { sampleProducts } from "@/lib/sample-data";
 import { buildShoppingListFromReview, groupShoppingListByCategory } from "@/lib/shopping-list";
 import { loadCurrentWeekReview } from "@/lib/current-week-review";
+import { WeeklyReviewItem } from "@/lib/types";
 
 export default function ShoppingListPage() {
   const [purchasedByItem, setPurchasedByItem] = useState<Record<string, boolean>>({});
+  const [review, setReview] = useState<WeeklyReviewItem[]>(() => loadCurrentWeekReview());
 
-  const list = useMemo(
-    () => buildShoppingListFromReview(sampleProducts, loadCurrentWeekReview()),
-    []
-  );
+  useEffect(() => {
+    function refreshReview() {
+      setReview(loadCurrentWeekReview());
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        refreshReview();
+      }
+    }
+
+    refreshReview();
+    window.addEventListener("focus", refreshReview);
+    window.addEventListener("storage", refreshReview);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", refreshReview);
+      window.removeEventListener("storage", refreshReview);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  const list = useMemo(() => buildShoppingListFromReview(sampleProducts, review), [review]);
 
   const grouped = useMemo(
     () =>
