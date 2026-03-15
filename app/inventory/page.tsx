@@ -7,12 +7,12 @@ import { CATEGORY_ORDER, Product, Unit } from "@/lib/types";
 const units: Unit[] = ["g", "kg", "ml", "L", "pcs"];
 
 type ProductForm = {
-  name: string
-  category: Product["category"]
-  usual_quantity: string
-  unit: Unit
-  active: boolean
-}
+  name: string;
+  category: Product["category"];
+  usual_quantity: string;
+  unit: Unit;
+  active: boolean;
+};
 
 const blankForm: ProductForm = {
   name: "",
@@ -20,14 +20,11 @@ const blankForm: ProductForm = {
   usual_quantity: "",
   unit: "g",
   active: true,
-}
-
-const [form, setForm] = useState<ProductForm>(blankForm);
-
+};
 
 export default function MasterProductsPage() {
   const [products, setProducts] = useState<Product[]>(sampleProducts);
-  const [form, setForm] = useState(blankForm);
+  const [form, setForm] = useState<ProductForm>(blankForm);
 
   function addProduct(event: FormEvent) {
     event.preventDefault();
@@ -42,7 +39,7 @@ export default function MasterProductsPage() {
       category: form.category,
       usual_quantity: Number(form.usual_quantity) || 0,
       unit: form.unit,
-      active: form.active
+      active: form.active,
     };
 
     setProducts((current) => [product, ...current]);
@@ -60,7 +57,9 @@ export default function MasterProductsPage() {
   return (
     <section className="space-y-4">
       <h1 className="section-title">Lista maestra de productos</h1>
-      <p className="section-subtitle">Define lo habitual en casa: nombre, categoría, cantidad usual y unidad.</p>
+      <p className="section-subtitle">
+        Define lo habitual en casa: nombre, categoría, cantidad usual y unidad.
+      </p>
 
       <form onSubmit={addProduct} className="card grid gap-3">
         <label className="text-sm font-medium">
@@ -69,7 +68,9 @@ export default function MasterProductsPage() {
             required
             className="input"
             value={form.name}
-            onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, name: event.target.value }))
+            }
           />
         </label>
 
@@ -79,7 +80,12 @@ export default function MasterProductsPage() {
             <select
               className="input"
               value={form.category}
-              onChange={(event) => setForm((current) => ({ ...current, category: event.target.value as Product["category"] }))}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  category: event.target.value as Product["category"],
+                }))
+              }
             >
               {CATEGORY_ORDER.map((category) => (
                 <option key={category} value={category}>
@@ -94,7 +100,12 @@ export default function MasterProductsPage() {
             <select
               className="input"
               value={form.unit}
-              onChange={(event) => setForm((current) => ({ ...current, unit: event.target.value as Unit }))}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  unit: event.target.value as Unit,
+                }))
+              }
             >
               {units.map((unit) => (
                 <option key={unit} value={unit}>
@@ -113,11 +124,18 @@ export default function MasterProductsPage() {
             step="0.1"
             className="input"
             value={form.usual_quantity}
-            onChange={(event) => setForm((current) => ({ ...current, usual_quantity: event.target.value }))}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                usual_quantity: event.target.value,
+              }))
+            }
           />
         </label>
 
-        <button type="submit" className="btn-primary">Agregar producto</button>
+        <button type="submit" className="btn-primary">
+          Agregar producto
+        </button>
       </form>
 
       <div className="space-y-2">
