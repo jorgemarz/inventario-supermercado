@@ -1,39 +1,61 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { sampleProducts } from "@/lib/sample-data";
 import { buildShoppingListFromReview, groupShoppingListByCategory } from "@/lib/shopping-list";
-import { loadCurrentWeekReview } from "@/lib/current-week-review";
-import { WeeklyReviewItem } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
+import { Product, WeeklyReviewItem } from "@/lib/types";
+import { getOrCreateCurrentWeekReviewId } from "@/lib/weekly-review-db";
 
 export default function ShoppingListPage() {
   const [purchasedByItem, setPurchasedByItem] = useState<Record<string, boolean>>({});
-  const [review, setReview] = useState<WeeklyReviewItem[]>(() => loadCurrentWeekReview());
+  const [list, setList] = useState<ReturnType<typeof buildShoppingListFromReview>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    function refreshReview() {
-      setReview(loadCurrentWeekReview());
-    }
+    async function loadList() {
+      if (!supabase) {
+        setError("Falta configurar Supabase (NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY).");
+        setIsLoading(false);
+        return;
+      }
 
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        refreshReview();
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const { data: productsData, error: productsError } = await supabase
+          .from("products")
+          .select("id, name, category, usual_quantity, unit, active")
+          .eq("active", true);
+
+        if (productsError) {
+          throw productsError;
+        }
+
+        const activeProducts = (productsData ?? []) as Product[];
+        const { reviewId } = await getOrCreateCurrentWeekReviewId(supabase);
+
+        const { data: reviewItemsData, error: reviewItemsError } = await supabase
+          .from("weekly_review_items")
+          .select("product_id, status, suggested_quantity")
+          .eq("review_id", reviewId)
+          .in("status", ["needed", "almost_finished"]);
+
+        if (reviewItemsError) {
+          throw reviewItemsError;
+        }
+
+        setList(buildShoppingListFromReview(activeProducts, (reviewItemsData ?? []) as WeeklyReviewItem[]));
+      } catch {
+        setError("No se pudo cargar la lista de compras.");
+      } finally {
+        setIsLoading(false);
       }
     }
 
-    refreshReview();
-    window.addEventListener("focus", refreshReview);
-    window.addEventListener("storage", refreshReview);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", refreshReview);
-      window.removeEventListener("storage", refreshReview);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
+    loadList();
   }, []);
-
-  const list = useMemo(() => buildShoppingListFromReview(sampleProducts, review), [review]);
 
   const grouped = useMemo(
     () =>
@@ -47,6 +69,9 @@ export default function ShoppingListPage() {
     <section className="space-y-4">
       <h1 className="section-title">Lista de compras del sábado</h1>
       <p className="section-subtitle">Generada desde productos marcados como Needed o Almost finished.</p>
+
+      {error ? <article className="card text-sm text-rose-700">{error}</article> : null}
+      {isLoading ? <article className="card text-sm text-slate-600">Cargando lista...</article> : null}
 
       {grouped.map((group) => (
         <article key={group.category} className="card space-y-2">
