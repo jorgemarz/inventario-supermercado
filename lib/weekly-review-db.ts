@@ -1,6 +1,13 @@
 import { SupabaseClient } from "@supabase/supabase-js"
 import { supabase } from "./supabase"
 
+function getRequiredSupabaseClient() {
+  if (!supabase) {
+    throw new Error("Supabase client is not available")
+  }
+  return supabase
+}
+
 /**
  * Devuelve el label de la semana actual
  * ejemplo: "11 mar - 17 mar"
@@ -65,7 +72,9 @@ export async function getOrCreateCurrentWeekReviewId(client: SupabaseClient) {
  * Guarda una revisión semanal completa
  */
 export async function saveWeeklyReview(data: any) {
-  const { error } = await supabase
+  const client = getRequiredSupabaseClient()
+
+  const { error } = await client
     .from("weekly_reviews")
     .insert([data])
 
@@ -79,7 +88,9 @@ export async function saveWeeklyReview(data: any) {
  * Obtiene la última revisión semanal
  */
 export async function getWeeklyReview() {
-  const { data, error } = await supabase
+  const client = getRequiredSupabaseClient()
+
+  const { data, error } = await client
     .from("weekly_reviews")
     .select("*")
     .order("created_at", { ascending: false })
@@ -98,7 +109,9 @@ export async function getWeeklyReview() {
  * Historial de revisiones
  */
 export async function getWeeklyReviewHistory() {
-  const { data, error } = await supabase
+  const client = getRequiredSupabaseClient()
+
+  const { data, error } = await client
     .from("weekly_reviews")
     .select("*")
     .order("created_at", { ascending: false })
