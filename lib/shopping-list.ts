@@ -31,3 +31,18 @@ export function buildShoppingListFromReview(
     })
     .filter((item): item is ShoppingListItem => item !== null);
 }
+
+export function groupShoppingListByCategory(items: ShoppingListItem[]) {
+  const groups = new Map<string, ShoppingListItem[]>();
+
+  for (const item of items) {
+    const current = groups.get(item.category) ?? [];
+    current.push(item);
+    groups.set(item.category, current);
+  }
+
+  return Array.from(groups.entries()).map(([category, items]) => ({
+    category,
+    items,
+  }));
+}
