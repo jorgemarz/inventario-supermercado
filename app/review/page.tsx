@@ -81,7 +81,8 @@ export default function ReviewPage() {
             };
           })
         );
-      } catch {
+      } catch (err) {
+        console.error("Error loading weekly review", err);
         setError("No se pudo cargar la revisión semanal.");
       } finally {
         setIsLoading(false);
@@ -98,6 +99,7 @@ export default function ReviewPage() {
 
   async function persistReviewItem(nextItem: WeeklyReviewItem) {
     if (!supabase || !reviewId) {
+      console.error("No supabase client or reviewId", { reviewId });
       return;
     }
 
@@ -106,12 +108,17 @@ export default function ReviewPage() {
     if (existingId) {
       const { error: updateError } = await supabase
         .from("weekly_review_items")
-        .update({ status: nextItem.status, suggested_quantity: nextItem.suggested_quantity })
+        .update({
+          status: nextItem.status,
+          suggested_quantity: nextItem.suggested_quantity
+        })
         .eq("id", existingId);
 
       if (updateError) {
+        console.error("Error updating weekly_review_item", updateError);
         setError("No se pudo guardar un cambio de la revisión.");
       }
+
       return;
     }
 
@@ -124,9 +131,10 @@ export default function ReviewPage() {
         suggested_quantity: nextItem.suggested_quantity
       })
       .select("id, product_id")
-      .single<{ id: string; product_id: string }>();
+      .single();
 
     if (insertError || !inserted) {
+      console.error("Error inserting weekly_review_item", insertError);
       setError("No se pudo guardar un cambio de la revisión.");
       return;
     }
@@ -138,22 +146,23 @@ export default function ReviewPage() {
   }
 
   function update(productId: string, patch: Partial<WeeklyReviewItem>) {
-    let updatedItem: WeeklyReviewItem | null = null;
+    const currentItem = review.find((item) => item.product_id === productId);
+    if (!currentItem) {
+      return;
+    }
+
+    const nextItem: WeeklyReviewItem = {
+      ...currentItem,
+      ...patch
+    };
 
     setReview((current) =>
-      current.map((item) => {
-        if (item.product_id !== productId) {
-          return item;
-        }
-
-        updatedItem = { ...item, ...patch };
-        return updatedItem;
-      })
+      current.map((item) =>
+        item.product_id === productId ? nextItem : item
+      )
     );
 
-    if (updatedItem) {
-      persistReviewItem(updatedItem);
-    }
+    persistReviewItem(nextItem);
   }
 
   return (
@@ -184,7 +193,10 @@ export default function ReviewPage() {
                     onClick={() =>
                       update(product.id, {
                         status: option.value,
-                        suggested_quantity: option.value === "not_needed" ? 0 : Math.max(1, reviewItem.suggested_quantity)
+                        suggested_quantity:
+                          option.value === "not_needed"
+                            ? 0
+                            : Math.max(1, reviewItem.suggested_quantity)
                       })
                     }
                     className={`rounded-lg border px-2 py-2 text-xs ${
@@ -205,7 +217,11 @@ export default function ReviewPage() {
                   min="0"
                   step="0.1"
                   value={reviewItem.suggested_quantity}
-                  onChange={(event) => update(product.id, { suggested_quantity: Number(event.target.value) || 0 })}
+                  onChange={(event) =>
+                    update(product.id, {
+                      suggested_quantity: Number(event.target.value) || 0
+                    })
+                  }
                   disabled={reviewItem.status === "not_needed"}
                   className="input"
                 />
