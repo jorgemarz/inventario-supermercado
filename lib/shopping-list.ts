@@ -4,7 +4,7 @@ export function buildShoppingListFromReview(products: Product[], reviewItems: We
   const productsById = new Map(products.filter((product) => product.active).map((product) => [product.id, product]));
 
   return reviewItems
-    .filter((item): item is WeeklyReviewItem & { status: Exclude<WeeklyReviewItem["status"], "not_needed"> } => item.status !== "not_needed")
+    .filter((item): item is WeeklyReviewItem & { status: "needed" } => item.status === "needed")
     .map((item): ShoppingListItem | null => {
       const product = productsById.get(item.product_id);
       if (!product) {
