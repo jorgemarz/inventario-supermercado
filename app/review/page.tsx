@@ -7,10 +7,14 @@ import { buildShoppingListFromReview } from "@/lib/shopping-list";
 import { loadCurrentWeekReview, saveCurrentWeekReview } from "@/lib/current-week-review";
 
 const statusOptions: { value: WeeklyNeedStatus; label: string }[] = [
-  { value: "needed", label: "Needed" },
-  { value: "almost_finished", label: "Almost finished" },
-  { value: "not_needed", label: "Not needed" }
+  { value: "needed", label: "Se necesita" },
+  { value: "almost_finished", label: "Queda poco" },
+  { value: "not_needed", label: "Aún hay" }
 ];
+
+function unitLabel(unit: string) {
+  return unit === "pcs" ? "pzas" : unit;
+}
 
 export default function ReviewPage() {
   const [review, setReview] = useState<WeeklyReviewItem[]>(() => loadCurrentWeekReview());
@@ -70,7 +74,7 @@ export default function ReviewPage() {
               </div>
 
               <label className="text-sm font-medium">
-                Cantidad sugerida
+                Cantidad sugerida ({unitLabel(product.unit)})
                 <input
                   type="number"
                   min="0"
@@ -87,7 +91,7 @@ export default function ReviewPage() {
       </div>
 
       <article className="card text-sm text-slate-700">
-        Lista estimada para sábado: <span className="font-semibold">{shoppingCount} productos</span>
+        Lista para comprar esta semana: <span className="font-semibold">{shoppingCount} productos</span>
       </article>
     </section>
   );
